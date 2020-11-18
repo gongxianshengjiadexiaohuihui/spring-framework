@@ -62,6 +62,7 @@ import org.springframework.lang.Nullable;
  * @see org.springframework.aop.framework.ProxyFactoryBean
  * @see org.springframework.jndi.JndiObjectFactoryBean
  */
+//用于一些复杂Bean的创建
 public interface FactoryBean<T> {
 
 	/**
@@ -72,8 +73,8 @@ public interface FactoryBean<T> {
 	 * the factory bean class.
 	 * @since 5.2
 	 */
+	//用于类型推断
 	String OBJECT_TYPE_ATTRIBUTE = "factoryBeanObjectType";
-
 
 	/**
 	 * Return an instance (possibly shared or independent) of the object
@@ -92,6 +93,7 @@ public interface FactoryBean<T> {
 	 * @throws Exception in case of creation errors
 	 * @see FactoryBeanNotInitializedException
 	 */
+	//核心接口，用于返回工厂创建的Bean，允许返回空值。
 	@Nullable
 	T getObject() throws Exception;
 
@@ -114,6 +116,8 @@ public interface FactoryBean<T> {
 	 * or {@code null} if not known at the time of the call
 	 * @see ListableBeanFactory#getBeansOfType
 	 */
+	//返回创建Bean的类型，可以在自动装配时，不用初始化就可以进行类型检查
+	//强烈建议合适的实现该方法，根据FactoryBean的状态返回FactroyBean正在创建对象的类型
 	@Nullable
 	Class<?> getObjectType();
 
@@ -142,6 +146,7 @@ public interface FactoryBean<T> {
 	 * @see #getObject()
 	 * @see SmartFactoryBean#isPrototype()
 	 */
+	//判断创建的Bean是否是单例，如果是单例就可能会被BeanFactory缓存，每次都返回同一个实例
 	default boolean isSingleton() {
 		return true;
 	}
