@@ -248,11 +248,13 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	protected <T> T doGetBean(
 			String name, @Nullable Class<T> requiredType, @Nullable Object[] args, boolean typeCheckOnly)
 			throws BeansException {
-
+		//如果是FactoryBean，就会去掉Bean开头的&符号
 		String beanName = transformedBeanName(name);
 		Object bean;
 
 		// Eagerly check singleton cache for manually registered singletons.
+		//会先尝试从一级缓存和三级缓存找，找到就返回，如果找不到会去二级缓存找该bean的ObjectFactory，
+		//如果存在就会进行bean的创建，创建成功后，将该bean放入三级缓存，并将该bean的ObjectFactory从二级缓存中移除
 		Object sharedInstance = getSingleton(beanName);
 		if (sharedInstance != null && args == null) {
 			if (logger.isTraceEnabled()) {
@@ -329,9 +331,11 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				}
 
 				// Create bean instance.
+				//实际创建bean的地方
 				if (mbd.isSingleton()) {
 					sharedInstance = getSingleton(beanName, () -> {
 						try {
+							//调用创建单例bean的方法
 							return createBean(beanName, mbd, args);
 						}
 						catch (BeansException ex) {

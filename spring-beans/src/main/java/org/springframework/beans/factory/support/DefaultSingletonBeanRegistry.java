@@ -73,16 +73,16 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	/** Maximum number of suppressed exceptions to preserve. */
 	private static final int SUPPRESSED_EXCEPTIONS_LIMIT = 100;
 
-
+	//一级缓存，缓存创建好bean实例
 	/** Cache of singleton objects: bean name to bean instance. */
 	private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
-
+	//二级缓存，缓存正在创建bean提前暴露的对象工厂
 	/** Cache of singleton factories: bean name to ObjectFactory. */
 	private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
-
+	//三级缓存，缓存二级缓存缓存的对象工厂创建的bean
 	/** Cache of early singleton objects: bean name to bean instance. */
 	private final Map<String, Object> earlySingletonObjects = new ConcurrentHashMap<>(16);
-
+	//根据注册顺序，保存注册单例bean的名字
 	/** Set of registered singletons, containing the bean names in registration order. */
 	private final Set<String> registeredSingletons = new LinkedHashSet<>(256);
 
@@ -155,8 +155,11 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 		Assert.notNull(singletonFactory, "Singleton factory must not be null");
 		synchronized (this.singletonObjects) {
 			if (!this.singletonObjects.containsKey(beanName)) {
+				//放入二级缓存
 				this.singletonFactories.put(beanName, singletonFactory);
+				//如果三级缓存有就移除
 				this.earlySingletonObjects.remove(beanName);
+				//注册beanName
 				this.registeredSingletons.add(beanName);
 			}
 		}

@@ -1017,6 +1017,13 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 	 * Return whether this bean definition is 'synthetic', that is,
 	 * not defined by the application itself.
 	 */
+
+	// 是否是一个合成 BeanDefinition,
+	// 合成 在这里的意思表示这不是一个应用开发人员自己定义的 BeanDefinition, 而是程序
+	// 自己组装而成的一个 BeanDefinition, 例子 :
+	// 1. 自动代理的helper bean，一个基础设施bean，因为使用<aop:config> 被自动合成创建;
+	// 2. bean errorPageRegistrarBeanPostProcessor , Spring boot 自动配置针对Web错误页面的
+	// 一个bean，这个bean不需要应用开发人员定义，而是框架根据上下文自动合成组装而成；
 	public boolean isSynthetic() {
 		return this.synthetic;
 	}
