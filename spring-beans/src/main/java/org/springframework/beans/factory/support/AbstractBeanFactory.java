@@ -244,6 +244,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * @return an instance of the bean
 	 * @throws BeansException if the bean could not be created
 	 */
+	//实际执行bean实例化的地方
 	@SuppressWarnings("unchecked")
 	protected <T> T doGetBean(
 			String name, @Nullable Class<T> requiredType, @Nullable Object[] args, boolean typeCheckOnly)
@@ -267,17 +268,23 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 					logger.trace("Returning cached instance of singleton bean '" + beanName + "'");
 				}
 			}
+			//获取给定bean实例的对象，即bean
+			//实例本身或其创建的对象（对于FactoryBean）。
+			//这个方法的使用频率很高~
 			bean = getObjectForBeanInstance(sharedInstance, name, beanName, null);
 		}
 
 		else {
 			// Fail if we're already creating this bean instance:
 			// We're assumably within a circular reference.
+			//原型bean不允许循环创建，如果这个bean正在创建，就抛出异常
 			if (isPrototypeCurrentlyInCreation(beanName)) {
 				throw new BeanCurrentlyInCreationException(beanName);
 			}
 
 			// Check if bean definition exists in this factory.
+			//如果存在父容器，需要判断下父容器是否已经实例化过它了。避免重复实例化，
+			//如果父容器被实例化，就以父容器为主。
 			BeanFactory parentBeanFactory = getParentBeanFactory();
 			if (parentBeanFactory != null && !containsBeanDefinition(beanName)) {
 				// Not found -> check parent.
@@ -298,7 +305,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 					return (T) parentBeanFactory.getBean(nameToLookup);
 				}
 			}
-
+			//标记这个Bean已经创建了
 			if (!typeCheckOnly) {
 				markBeanAsCreated(beanName);
 			}
@@ -309,10 +316,15 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				if (requiredType != null) {
 					beanCreation.tag("beanType", requiredType::toString);
 				}
+				//获取该bean合并的BeanDefinition
+				//会遍历父Bean的定义，如果有bean的定义对应子bean的定义合并返回
 				RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
+				//检查mbd是否为抽象
 				checkMergedBeanDefinition(mbd, beanName, args);
 
 				// Guarantee initialization of beans that the current bean depends on.
+				//这里比较重要，会有属性注入，所以要保证它的依赖项先初始化。这里是处理循环依赖的核心~
+				//@DependsOn注解可以控制Bean的初始化顺序
 				String[] dependsOn = mbd.getDependsOn();
 				if (dependsOn != null) {
 					for (String dep : dependsOn) {
@@ -332,11 +344,13 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				}
 
 				// Create bean instance.
-				//实际创建bean的地方，在创建过程中会放入
+				//正式开始创建bean的地方，在创建过程中会放入singletonsCurrentlyInCreation
 				if (mbd.isSingleton()) {
+					//还是先尝试从缓存中去取，获取失败就通过ObjectFactory创建
+					//这个getSingleton和上面的都支持通过ObjectFactory去根据Scope来创建对象
 					sharedInstance = getSingleton(beanName, () -> {
 						try {
-							//调用创建单例bean的方法
+							//调用创建单例bean的核心方法
 							return createBean(beanName, mbd, args);
 						}
 						catch (BeansException ex) {
@@ -347,10 +361,12 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 							throw ex;
 						}
 					});
+					//同上面的那个
 					bean = getObjectForBeanInstance(sharedInstance, name, beanName, mbd);
 				}
 
 				else if (mbd.isPrototype()) {
+					//如果是原型bean就直接创建
 					// It's a prototype -> create a new instance.
 					Object prototypeInstance = null;
 					try {
@@ -360,10 +376,12 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 					finally {
 						afterPrototypeCreation(beanName);
 					}
+					//同上面那个
 					bean = getObjectForBeanInstance(prototypeInstance, name, beanName, mbd);
 				}
 
 				else {
+					//如果是其他scope，就根据其scope定义进行创建
 					String scopeName = mbd.getScope();
 					if (!StringUtils.hasLength(scopeName)) {
 						throw new IllegalStateException("No scope name defined for bean ´" + beanName + "'");
@@ -382,6 +400,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 								afterPrototypeCreation(beanName);
 							}
 						});
+						//同上面那个
 						bean = getObjectForBeanInstance(scopedInstance, name, beanName, mbd);
 					}
 					catch (IllegalStateException ex) {
@@ -401,6 +420,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		}
 
 		// Check if required type matches the type of the actual bean instance.
+		//检查要求的类型和实际的类型是否匹配，如果不匹配就进行转换
 		if (requiredType != null && !requiredType.isInstance(bean)) {
 			try {
 				T convertedBean = getTypeConverter().convertIfNecessary(bean, requiredType);
