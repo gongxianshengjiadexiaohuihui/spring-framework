@@ -500,6 +500,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		// Make sure bean class is actually resolved at this point, and
 		// clone the bean definition in case of a dynamically resolved Class
 		// which cannot be stored in the shared merged bean definition.
+		//确保对应的BeanClass完成了解析(已经加载进来了Class对象)具体表现是进行了ClassLoader.loadClass或Class.forName完成了类加载
+		//主要根据传入的typesToMatch生成特定的ClassLoader，如果有的话，还要调用RootBeanDefinition#resolveBeanClass,
+		// 根据特定的类加载器或者默认的类加载器加载出class属性对应的Class对象
 		Class<?> resolvedClass = resolveBeanClass(mbd, beanName);
 		if (resolvedClass != null && !mbd.hasBeanClass() && mbd.getBeanClassName() != null) {
 			mbdToUse = new RootBeanDefinition(mbd);
@@ -508,6 +511,8 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		// Prepare method overrides.
 		try {
+			//Spring支持Lookup-method,replace-method注入方式
+			//相当于调用指定类里面的方法进行注入，所以需要考虑方法重载的情况。这个方法解析的就是这个情况
 			mbdToUse.prepareMethodOverrides();
 		}
 		catch (BeanDefinitionValidationException ex) {
@@ -517,7 +522,13 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		try {
 			// Give BeanPostProcessors a chance to return a proxy instead of the target bean instance.
+			//给BeanPostProcessors一个机会来返回一个代理对象来代替目标~动态代理就是在这里实现的
+			//1、首先判断当前spring容器是否注册了实现InstantiationAwareBeanPostProcessor接口的后置处理器，
+			// 如果有，则依次调用其中的applyBeanPostProcessorBeforeInstantiation方法，如果任意一个方法返回不为null，直接调用结束。
+			//2、然后依次调用所有注册BeanPostProcessor的postProcessAfterInitialization方法，如果任意一个方法返回不为null，直接调用结束。
+			//容器中的所有InstantiationAwareBeanPostProcessor都会在这里生效
 			Object bean = resolveBeforeInstantiation(beanName, mbdToUse);
+			//如果不为空，说明提前生成了实例，直接返回
 			if (bean != null) {
 				return bean;
 			}
@@ -533,6 +544,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			if (logger.isTraceEnabled()) {
 				logger.trace("Finished creating instance of bean '" + beanName + "'");
 			}
+			//创建后直接返回
 			return beanInstance;
 		}
 		catch (BeanCreationException | ImplicitlyAppearedSingletonException ex) {
